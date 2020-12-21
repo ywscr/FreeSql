@@ -50,6 +50,14 @@ namespace FreeSql
                     providerType = Type.GetType("FreeSql.ShenTong.ShenTongProvider`1,FreeSql.Provider.ShenTong")?.MakeGenericType(connType);
                     if (providerType == null) throw new Exception("缺少 FreeSql 数据库实现包：FreeSql.Provider.ShenTong.dll，可前往 nuget 下载");
                     break;
+                case "KdbndpConnection":
+                    providerType = Type.GetType("FreeSql.KingbaseES.KingbaseESProvider`1,FreeSql.Provider.KingbaseES")?.MakeGenericType(connType);
+                    if (providerType == null) throw new Exception("缺少 FreeSql 数据库实现包：FreeSql.Provider.KingbaseES.dll，可前往 nuget 下载");
+                    break;
+                case "FbConnection":
+                    providerType = Type.GetType("FreeSql.Firebird.FirebirdProvider`1,FreeSql.Provider.Firebird")?.MakeGenericType(connType);
+                    if (providerType == null) throw new Exception("缺少 FreeSql 数据库实现包：FreeSql.Provider.Firebird.dll，可前往 nuget 下载");
+                    break;
                 default:
                     throw new Exception("未实现");
             }
@@ -85,6 +93,7 @@ namespace FreeSql
         /// 插入数据，传入实体
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="source"></param>
         /// <returns></returns>
         public static IInsert<T1> Insert<T1>(this IDbConnection that, T1 source) where T1 : class => GetCrud(that).Insert<T1>(source).WithConnection(that as DbConnection);
@@ -92,6 +101,7 @@ namespace FreeSql
         /// 插入数据，传入实体数组
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="source"></param>
         /// <returns></returns>
         public static IInsert<T1> Insert<T1>(this IDbConnection that, T1[] source) where T1 : class => GetCrud(that).Insert<T1>(source).WithConnection(that as DbConnection);
@@ -99,6 +109,7 @@ namespace FreeSql
         /// 插入数据，传入实体集合
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="source"></param>
         /// <returns></returns>
         public static IInsert<T1> Insert<T1>(this IDbConnection that, List<T1> source) where T1 : class => GetCrud(that).Insert<T1>(source).WithConnection(that as DbConnection);
@@ -106,6 +117,7 @@ namespace FreeSql
         /// 插入数据，传入实体集合
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="source"></param>
         /// <returns></returns>
         public static IInsert<T1> Insert<T1>(this IDbConnection that, IEnumerable<T1> source) where T1 : class => GetCrud(that).Insert<T1>(source).WithConnection(that as DbConnection);
@@ -125,6 +137,7 @@ namespace FreeSql
         /// 注意区别：FreeSql.Repository 仓储也有 InsertOrUpdate 方法（不依赖数据库特性）
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static IInsertOrUpdate<T1> InsertOrUpdate<T1>(this IDbConnection that) where T1 : class => GetCrud(that).InsertOrUpdate<T1>().WithConnection(that as DbConnection);
 
@@ -132,12 +145,14 @@ namespace FreeSql
         /// 修改数据
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static IUpdate<T1> Update<T1>(this IDbConnection that) where T1 : class => GetCrud(that).Update<T1>().WithConnection(that as DbConnection);
         /// <summary>
         /// 修改数据，传入动态条件，如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="dywhere">主键值、主键值集合、实体、实体集合、匿名对象、匿名对象集合</param>
         /// <returns></returns>
         public static IUpdate<T1> Update<T1>(this IDbConnection that, object dywhere) where T1 : class => GetCrud(that).Update<T1>(dywhere).WithConnection(that as DbConnection);
@@ -146,12 +161,14 @@ namespace FreeSql
         /// 查询数据
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static ISelect<T1> Select<T1>(this IDbConnection that) where T1 : class => GetCrud(that).Select<T1>().WithConnection(that as DbConnection);
         /// <summary>
         /// 查询数据，传入动态条件，如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="dywhere">主键值、主键值集合、实体、实体集合、匿名对象、匿名对象集合</param>
         /// <returns></returns>
         public static ISelect<T1> Select<T1>(this IDbConnection that, object dywhere) where T1 : class => GetCrud(that).Select<T1>(dywhere).WithConnection(that as DbConnection);
@@ -160,12 +177,14 @@ namespace FreeSql
         /// 删除数据
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static IDelete<T1> Delete<T1>(this IDbConnection that) where T1 : class => GetCrud(that).Delete<T1>().WithConnection(that as DbConnection);
         /// <summary>
         /// 删除数据，传入动态条件，如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="dywhere">主键值、主键值集合、实体、实体集合、匿名对象、匿名对象集合</param>
         /// <returns></returns>
         public static IDelete<T1> Delete<T1>(this IDbConnection that, object dywhere) where T1 : class => GetCrud(that).Delete<T1>(dywhere).WithConnection(that as DbConnection);
@@ -173,57 +192,66 @@ namespace FreeSql
         /// <summary>
         /// 多表查询
         /// </summary>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static ISelect<T1, T2> Select<T1, T2>(this IDbConnection that) where T1 : class where T2 : class =>
-            GetCrud(that).Select<T1>().From<T2>((s, b) => s);
+            Select<T1>(that).From<T2>((s, b) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static ISelect<T1, T2, T3> Select<T1, T2, T3>(this IDbConnection that) where T1 : class where T2 : class where T3 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3>((s, b, c) => s);
+            Select<T1>(that).From<T2, T3>((s, b, c) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4> Select<T1, T2, T3, T4>(this IDbConnection that) where T1 : class where T2 : class where T3 : class where T4 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4>((s, b, c, d) => s);
+            Select<T1>(that).From<T2, T3, T4>((s, b, c, d) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5> Select<T1, T2, T3, T4, T5>(this IDbConnection that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5>((s, b, c, d, e) => s);
+            Select<T1>(that).From<T2, T3, T4, T5>((s, b, c, d, e) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5, T6> Select<T1, T2, T3, T4, T5, T6>(this IDbConnection that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class where T6 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5, T6>((s, b, c, d, e, f) => s);
+            Select<T1>(that).From<T2, T3, T4, T5, T6>((s, b, c, d, e, f) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5, T6, T7> Select<T1, T2, T3, T4, T5, T6, T7>(this IDbConnection that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class where T6 : class where T7 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5, T6, T7>((s, b, c, d, e, f, g) => s);
+            Select<T1>(that).From<T2, T3, T4, T5, T6, T7>((s, b, c, d, e, f, g) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5, T6, T7, T8> Select<T1, T2, T3, T4, T5, T6, T7, T8>(this IDbConnection that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class where T6 : class where T7 : class where T8 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5, T6, T7, T8>((s, b, c, d, e, f, g, h) => s);
+            Select<T1>(that).From<T2, T3, T4, T5, T6, T7, T8>((s, b, c, d, e, f, g, h) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5, T6, T7, T8, T9> Select<T1, T2, T3, T4, T5, T6, T7, T8, T9>(this IDbConnection that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class where T6 : class where T7 : class where T8 : class where T9 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5, T6, T7, T8, T9>((s, b, c, d, e, f, g, h, i) => s);
+            Select<T1>(that).From<T2, T3, T4, T5, T6, T7, T8, T9>((s, b, c, d, e, f, g, h, i) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> Select<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(this IDbConnection that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class where T6 : class where T7 : class where T8 : class where T9 : class where T10 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5, T6, T7, T8, T9, T10>((s, b, c, d, e, f, g, h, i, j) => s);
+            Select<T1>(that).From<T2, T3, T4, T5, T6, T7, T8, T9, T10>((s, b, c, d, e, f, g, h, i, j) => s);
         #endregion
 
         #region IDbTransaction
@@ -237,6 +265,7 @@ namespace FreeSql
         /// 插入数据，传入实体
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="source"></param>
         /// <returns></returns>
         public static IInsert<T1> Insert<T1>(this IDbTransaction that, T1 source) where T1 : class => GetCrud(that).Insert<T1>(source).WithTransaction(that as DbTransaction);
@@ -244,6 +273,7 @@ namespace FreeSql
         /// 插入数据，传入实体数组
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="source"></param>
         /// <returns></returns>
         public static IInsert<T1> Insert<T1>(this IDbTransaction that, T1[] source) where T1 : class => GetCrud(that).Insert<T1>(source).WithTransaction(that as DbTransaction);
@@ -251,6 +281,7 @@ namespace FreeSql
         /// 插入数据，传入实体集合
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="source"></param>
         /// <returns></returns>
         public static IInsert<T1> Insert<T1>(this IDbTransaction that, List<T1> source) where T1 : class => GetCrud(that).Insert<T1>(source).WithTransaction(that as DbTransaction);
@@ -258,6 +289,7 @@ namespace FreeSql
         /// 插入数据，传入实体集合
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="source"></param>
         /// <returns></returns>
         public static IInsert<T1> Insert<T1>(this IDbTransaction that, IEnumerable<T1> source) where T1 : class => GetCrud(that).Insert<T1>(source).WithTransaction(that as DbTransaction);
@@ -276,6 +308,7 @@ namespace FreeSql
         /// 注意区别：FreeSql.Repository 仓储也有 InsertOrUpdate 方法（不依赖数据库特性）
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static IInsertOrUpdate<T1> InsertOrUpdate<T1>(this IDbTransaction that) where T1 : class => GetCrud(that).InsertOrUpdate<T1>().WithTransaction(that as DbTransaction);
 
@@ -283,12 +316,14 @@ namespace FreeSql
         /// 修改数据
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static IUpdate<T1> Update<T1>(this IDbTransaction that) where T1 : class => GetCrud(that).Update<T1>().WithTransaction(that as DbTransaction);
         /// <summary>
         /// 修改数据，传入动态条件，如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="dywhere">主键值、主键值集合、实体、实体集合、匿名对象、匿名对象集合</param>
         /// <returns></returns>
         public static IUpdate<T1> Update<T1>(this IDbTransaction that, object dywhere) where T1 : class => GetCrud(that).Update<T1>(dywhere).WithTransaction(that as DbTransaction);
@@ -297,12 +332,14 @@ namespace FreeSql
         /// 查询数据
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static ISelect<T1> Select<T1>(this IDbTransaction that) where T1 : class => GetCrud(that).Select<T1>().WithTransaction(that as DbTransaction);
         /// <summary>
         /// 查询数据，传入动态条件，如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="dywhere">主键值、主键值集合、实体、实体集合、匿名对象、匿名对象集合</param>
         /// <returns></returns>
         public static ISelect<T1> Select<T1>(this IDbTransaction that, object dywhere) where T1 : class => GetCrud(that).Select<T1>(dywhere).WithTransaction(that as DbTransaction);
@@ -311,12 +348,14 @@ namespace FreeSql
         /// 删除数据
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <returns></returns>
         public static IDelete<T1> Delete<T1>(this IDbTransaction that) where T1 : class => GetCrud(that).Delete<T1>().WithTransaction(that as DbTransaction);
         /// <summary>
         /// 删除数据，传入动态条件，如：主键值 | new[]{主键值1,主键值2} | TEntity1 | new[]{TEntity1,TEntity2} | new{id=1}
         /// </summary>
         /// <typeparam name="T1"></typeparam>
+        /// <param name="that"></param>
         /// <param name="dywhere">主键值、主键值集合、实体、实体集合、匿名对象、匿名对象集合</param>
         /// <returns></returns>
         public static IDelete<T1> Delete<T1>(this IDbTransaction that, object dywhere) where T1 : class => GetCrud(that).Delete<T1>(dywhere).WithTransaction(that as DbTransaction);
@@ -326,55 +365,55 @@ namespace FreeSql
         /// </summary>
         /// <returns></returns>
         public static ISelect<T1, T2> Select<T1, T2>(this IDbTransaction that) where T1 : class where T2 : class =>
-            GetCrud(that).Select<T1>().From<T2>((s, b) => s);
+            Select<T1>(that).From<T2>((s, b) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
         /// <returns></returns>
         public static ISelect<T1, T2, T3> Select<T1, T2, T3>(this IDbTransaction that) where T1 : class where T2 : class where T3 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3>((s, b, c) => s);
+            Select<T1>(that).From<T2, T3>((s, b, c) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4> Select<T1, T2, T3, T4>(this IDbTransaction that) where T1 : class where T2 : class where T3 : class where T4 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4>((s, b, c, d) => s);
+            Select<T1>(that).From<T2, T3, T4>((s, b, c, d) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5> Select<T1, T2, T3, T4, T5>(this IDbTransaction that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5>((s, b, c, d, e) => s);
+            Select<T1>(that).From<T2, T3, T4, T5>((s, b, c, d, e) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5, T6> Select<T1, T2, T3, T4, T5, T6>(this IDbTransaction that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class where T6 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5, T6>((s, b, c, d, e, f) => s);
+            Select<T1>(that).From<T2, T3, T4, T5, T6>((s, b, c, d, e, f) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5, T6, T7> Select<T1, T2, T3, T4, T5, T6, T7>(this IDbTransaction that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class where T6 : class where T7 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5, T6, T7>((s, b, c, d, e, f, g) => s);
+            Select<T1>(that).From<T2, T3, T4, T5, T6, T7>((s, b, c, d, e, f, g) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5, T6, T7, T8> Select<T1, T2, T3, T4, T5, T6, T7, T8>(this IDbTransaction that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class where T6 : class where T7 : class where T8 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5, T6, T7, T8>((s, b, c, d, e, f, g, h) => s);
+            Select<T1>(that).From<T2, T3, T4, T5, T6, T7, T8>((s, b, c, d, e, f, g, h) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5, T6, T7, T8, T9> Select<T1, T2, T3, T4, T5, T6, T7, T8, T9>(this IDbTransaction that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class where T6 : class where T7 : class where T8 : class where T9 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5, T6, T7, T8, T9>((s, b, c, d, e, f, g, h, i) => s);
+            Select<T1>(that).From<T2, T3, T4, T5, T6, T7, T8, T9>((s, b, c, d, e, f, g, h, i) => s);
         /// <summary>
         /// 多表查询
         /// </summary>
         /// <returns></returns>
         public static ISelect<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10> Select<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(this IDbTransaction that) where T1 : class where T2 : class where T3 : class where T4 : class where T5 : class where T6 : class where T7 : class where T8 : class where T9 : class where T10 : class =>
-            GetCrud(that).Select<T1>().From<T2, T3, T4, T5, T6, T7, T8, T9, T10>((s, b, c, d, e, f, g, h, i, j) => s);
+            Select<T1>(that).From<T2, T3, T4, T5, T6, T7, T8, T9, T10>((s, b, c, d, e, f, g, h, i, j) => s);
         #endregion
 
         #endregion

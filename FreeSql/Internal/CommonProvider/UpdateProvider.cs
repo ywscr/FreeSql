@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 namespace FreeSql.Internal.CommonProvider
 {
 
-    public abstract partial class UpdateProvider<T1> : IUpdate<T1> where T1 : class
+    public abstract partial class UpdateProvider<T1> : IUpdate<T1>
     {
         public IFreeSql _orm;
         public CommonUtils _commonUtils;
@@ -37,6 +37,7 @@ namespace FreeSql.Internal.CommonProvider
         public DbConnection _connection;
         public int _commandTimeout = 0;
         public Action<StringBuilder> _interceptSql;
+        public byte[] _updateVersionValue;
 
         public UpdateProvider(IFreeSql orm, CommonUtils commonUtils, CommonExpression commonExpression, object dywhere)
         {
@@ -75,6 +76,9 @@ namespace FreeSql.Internal.CommonProvider
             _paramsSource.Clear();
             IgnoreCanUpdate();
             _whereGlobalFilter = _orm.GlobalFilter.GetFilters();
+            _batchProgress = null;
+            _interceptSql = null;
+            _updateVersionValue = null;
         }
 
         public IUpdate<T1> WithTransaction(DbTransaction transaction)
@@ -122,7 +126,12 @@ namespace FreeSql.Internal.CommonProvider
                 if (affrows != _source.Count)
                     throw new DbUpdateVersionException($"记录可能不存在，或者【行级乐观锁】版本过旧，更新数量{_source.Count}，影响的行数{affrows}。", _table, sql, dbParms, affrows, _source.Select(a => (object)a));
                 foreach (var d in _source)
-                    _orm.SetEntityIncrByWithPropertyName(_table.Type, d, _table.VersionColumn.CsName, 1);
+                {
+                    if (_table.VersionColumn.Attribute.MapType == typeof(byte[]))
+                        _orm.SetEntityValueWithPropertyName(_table.Type, d, _table.VersionColumn.CsName, _updateVersionValue);
+                    else
+                        _orm.SetEntityIncrByWithPropertyName(_table.Type, d, _table.VersionColumn.CsName, 1);
+                }
             }
         }
 
@@ -206,7 +215,7 @@ namespace FreeSql.Internal.CommonProvider
                         {
                             _transaction.Rollback();
                             _orm.Aop.TraceAfterHandler?.Invoke(this, new Aop.TraceAfterEventArgs(transBefore, "回滚", ex));
-                            throw ex;
+                            throw;
                         }
                         _transaction = null;
                     }
@@ -215,7 +224,7 @@ namespace FreeSql.Internal.CommonProvider
             catch (Exception ex)
             {
                 exception = ex;
-                throw ex;
+                throw;
             }
             finally
             {
@@ -280,7 +289,7 @@ namespace FreeSql.Internal.CommonProvider
                         {
                             _transaction.Rollback();
                             _orm.Aop.TraceAfterHandler?.Invoke(this, new Aop.TraceAfterEventArgs(transBefore, "回滚", ex));
-                            throw ex;
+                            throw;
                         }
                         _transaction = null;
                     }
@@ -289,7 +298,7 @@ namespace FreeSql.Internal.CommonProvider
             catch (Exception ex)
             {
                 exception = ex;
-                throw ex;
+                throw;
             }
             finally
             {
@@ -318,7 +327,7 @@ namespace FreeSql.Internal.CommonProvider
             catch (Exception ex)
             {
                 exception = ex;
-                throw ex;
+                throw;
             }
             finally
             {
@@ -374,7 +383,7 @@ namespace FreeSql.Internal.CommonProvider
                             changedDict.Add(col.Attribute.Name, true);
                     }
                     if (val == null && col.Attribute.MapType == typeof(string) && col.Attribute.IsNullable == false)
-                        col.SetValue(data, val = "");
+                        col.SetValue(d, val = "");
                 }
             }
         }
@@ -427,7 +436,7 @@ namespace FreeSql.Internal.CommonProvider
             _set.Append(", ").Append(_commonUtils.QuoteSqlName(col.Attribute.Name)).Append(" = ");
             if (_noneParameter)
             {
-                _set.Append(_commonUtils.GetNoneParamaterSqlValue(_params, "u", col.Attribute.MapType, val));
+                _set.Append(_commonUtils.GetNoneParamaterSqlValue(_params, "u", col, col.Attribute.MapType, val));
             }
             else
             {
@@ -448,6 +457,11 @@ namespace FreeSql.Internal.CommonProvider
         {
             var body = exp?.Body;
             var nodeType = body?.NodeType;
+            if (nodeType == ExpressionType.Convert)
+            {
+                body = (body as UnaryExpression)?.Operand;
+                nodeType = body?.NodeType;
+            }
             switch (nodeType)
             {
                 case ExpressionType.Equal:
@@ -490,7 +504,7 @@ namespace FreeSql.Internal.CommonProvider
             if (body is BinaryExpression == false &&
                 nodeType != ExpressionType.Call) return this;
             var cols = new List<SelectColumnInfo>();
-            var expt = _commonExpression.ExpressionWhereLambdaNoneForeignObject(null, _table, cols, exp, null, null);
+            var expt = _commonExpression.ExpressionWhereLambdaNoneForeignObject(null, _table, cols, body, null, null);
             if (cols.Any() == false) return this;
             foreach (var col in cols)
             {
@@ -546,7 +560,7 @@ namespace FreeSql.Internal.CommonProvider
         public IUpdate<T1> Where(string sql, object parms = null)
         {
             if (string.IsNullOrEmpty(sql)) return this;
-            _where.Append(" AND (").Append(sql).Append(")");
+            _where.Append(" AND (").Append(sql).Append(')');
             if (parms != null) _params.AddRange(_commonUtils.GetDbParamtersByObject(sql, parms));
             return this;
         }
@@ -578,7 +592,7 @@ namespace FreeSql.Internal.CommonProvider
         {
             if (_source.Any() == false) return null;
             if (_table.ColumnsByCs.ContainsKey(CsName) == false) throw new Exception($"找不到 {CsName} 对应的列");
-            if (thenValue == null) throw new ArgumentNullException("thenValue 参数不可为 null");
+            if (thenValue == null) throw new ArgumentNullException(nameof(thenValue));
 
             if (_source.Count == 0) return null;
             if (_source.Count == 1)
@@ -588,7 +602,7 @@ namespace FreeSql.Internal.CommonProvider
                 var sb = new StringBuilder();
 
                 sb.Append(_commonUtils.QuoteSqlName(col.Attribute.Name)).Append(" = ");
-                sb.Append(thenValue(_commonUtils.GetNoneParamaterSqlValue(_paramsSource, "u", col.Attribute.MapType, col.GetDbValue(_source.First()))));
+                sb.Append(thenValue(_commonUtils.GetNoneParamaterSqlValue(_paramsSource, "u", col, col.Attribute.MapType, col.GetDbValue(_source.First()))));
 
                 return sb.ToString();
 
@@ -612,12 +626,12 @@ namespace FreeSql.Internal.CommonProvider
                     ToSqlWhen(cwsb, _table.Primarys, d);
                     cwsb.Append(" THEN ");
                     var val = col.GetDbValue(d);
-                    cwsb.Append(thenValue(_commonUtils.GetNoneParamaterSqlValue(_paramsSource, "u", col.Attribute.MapType, val)));
+                    cwsb.Append(thenValue(_commonUtils.GetNoneParamaterSqlValue(_paramsSource, "u", col, col.Attribute.MapType, val)));
                     if (val == null || val == DBNull.Value) nulls++;
                 }
                 cwsb.Append(" END");
                 if (nulls == _source.Count) sb.Append("NULL");
-                else sb.Append(cwsb.ToString());
+                else sb.Append(cwsb);
                 cwsb.Clear();
 
                 return sb.ToString();
@@ -685,7 +699,7 @@ namespace FreeSql.Internal.CommonProvider
                         {
                             var val = col.GetDbValue(_source.First());
                             if (_noneParameter)
-                                sb.Append(_commonUtils.GetNoneParamaterSqlValue(_paramsSource, "u", col.Attribute.MapType, val));
+                                sb.Append(_commonUtils.GetNoneParamaterSqlValue(_paramsSource, "u", col, col.Attribute.MapType, val));
                             else
                             {
                                 sb.Append(_commonUtils.QuoteWriteParamter(col.Attribute.MapType, _commonUtils.QuoteParamterName($"p_{_paramsSource.Count}")));
@@ -730,7 +744,7 @@ namespace FreeSql.Internal.CommonProvider
                                 cwsb.Append(" THEN ");
                                 var val = col.GetDbValue(d);
                                 if (_noneParameter)
-                                    cwsb.Append(_commonUtils.GetNoneParamaterSqlValue(_paramsSource, "u", col.Attribute.MapType, val));
+                                    cwsb.Append(_commonUtils.GetNoneParamaterSqlValue(_paramsSource, "u", col, col.Attribute.MapType, val));
                                 else
                                 {
                                     cwsb.Append(_commonUtils.QuoteWriteParamter(col.Attribute.MapType, _commonUtils.QuoteParamterName($"p_{_paramsSource.Count}")));
@@ -743,7 +757,7 @@ namespace FreeSql.Internal.CommonProvider
                             else
                             {
                                 ToSqlCaseWhenEnd(cwsb, col);
-                                sb.Append(cwsb.ToString());
+                                sb.Append(cwsb);
                             }
                             cwsb.Clear();
                         }
@@ -768,14 +782,20 @@ namespace FreeSql.Internal.CommonProvider
             if (_table.VersionColumn != null)
             {
                 var vcname = _commonUtils.QuoteSqlName(_table.VersionColumn.Attribute.Name);
-                sb.Append(", ").Append(vcname).Append(" = ").Append(_commonUtils.IsNull(vcname, 0)).Append(" + 1");
+                if (_table.VersionColumn.Attribute.MapType == typeof(byte[]))
+                {
+                    _updateVersionValue = Utils.GuidToBytes(Guid.NewGuid());
+                    sb.Append(", ").Append(vcname).Append(" = ").Append(_commonUtils.GetNoneParamaterSqlValue(_paramsSource, "uv", _table.VersionColumn, _table.VersionColumn.Attribute.MapType, _updateVersionValue));
+                }
+                else
+                    sb.Append(", ").Append(vcname).Append(" = ").Append(_commonUtils.IsNull(vcname, 0)).Append(" + 1");
             }
 
             sb.Append(" \r\nWHERE ");
             if (_source.Any())
             {
                 if (_table.Primarys.Any() == false) throw new ArgumentException($"{_table.Type.DisplayCsharp()} 没有定义主键，无法使用 SetSource，请尝试 SetDto");
-                sb.Append("(").Append(_commonUtils.WhereItems(_table, "", _source)).Append(")");
+                sb.Append('(').Append(_commonUtils.WhereItems(_table, "", _source)).Append(')');
             }
 
             if (_where.Length > 0)

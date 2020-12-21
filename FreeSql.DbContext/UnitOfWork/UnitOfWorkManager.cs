@@ -13,7 +13,8 @@ namespace FreeSql
     /// </summary>
     public class UnitOfWorkManager : IDisposable
     {
-        DbContextScopedFreeSql _ormScoped;
+        internal DbContextScopedFreeSql _ormScoped;
+        internal IFreeSql OrmOriginal => _ormScoped?._originalFsql;
         public IFreeSql Orm => _ormScoped;
         List<UowInfo> _rawUows = new List<UowInfo>();
         List<UowInfo> _allUows = new List<UowInfo>();
@@ -87,7 +88,6 @@ namespace FreeSql
         /// <returns></returns>
         public IUnitOfWork Begin(Propagation propagation = Propagation.Required, IsolationLevel? isolationLevel = null)
         {
-            if (propagation == Propagation.Requierd) propagation = Propagation.Required;
             switch (propagation)
             {
                 case Propagation.Required: return FindedUowCreateVirtual() ?? CreateUow(isolationLevel);
@@ -137,7 +137,7 @@ namespace FreeSql
         }
         IUnitOfWork CreateUow(IsolationLevel? isolationLevel)
         {
-            var uow = new UnitOfWorkOrginal(new UnitOfWork(Orm));
+            var uow = new UnitOfWorkOrginal(new UnitOfWork(OrmOriginal));
             var uowInfo = new UowInfo(uow, UowInfo.UowType.Orginal, false);
             if (isolationLevel != null) uow.IsolationLevel = isolationLevel.Value;
             try { uow.GetOrBeginTransaction(); }
@@ -189,10 +189,6 @@ namespace FreeSql
             public IsolationLevel? IsolationLevel { get => _baseUow.IsolationLevel; set => _baseUow.IsolationLevel = value; }
             public DbContext.EntityChangeReport EntityChangeReport => _baseUow.EntityChangeReport;
 
-            public bool Enable => _baseUow.Enable;
-            public void Close() => _baseUow.Close();
-            public void Open() => _baseUow.Open();
-
             public DbTransaction GetOrBeginTransaction(bool isCreate = true) => _baseUow.GetOrBeginTransaction(isCreate);
             public void Commit() => _baseUow.Commit();
             public void Rollback() => _baseUow.Rollback();
@@ -211,10 +207,6 @@ namespace FreeSql
             public IsolationLevel? IsolationLevel { get => _baseUow.IsolationLevel; set { } }
             public DbContext.EntityChangeReport EntityChangeReport => _baseUow.EntityChangeReport;
 
-            public bool Enable => _baseUow.Enable;
-            public void Close() => _baseUow.Close();
-            public void Open() => _baseUow.Open();
-
             public DbTransaction GetOrBeginTransaction(bool isCreate = true) => _baseUow.GetOrBeginTransaction(isCreate);
             public void Commit() { }
             public void Rollback() => _baseUow.Rollback();
@@ -228,10 +220,6 @@ namespace FreeSql
             public IFreeSql Orm => _fsql;
             public IsolationLevel? IsolationLevel { get; set; }
             public DbContext.EntityChangeReport EntityChangeReport { get; } = new DbContext.EntityChangeReport();
-
-            public bool Enable { get; }
-            public void Close() { }
-            public void Open() { }
 
             public DbTransaction GetOrBeginTransaction(bool isCreate = true) => null;
             public void Commit()
@@ -273,13 +261,6 @@ namespace FreeSql
         /// <summary>
         /// 以嵌套事务方式执行。
         /// </summary>
-        Nested,
-
-
-        /// <summary>
-        /// 错误的命名，请使用 Required，在 2.0.0 删除
-        /// </summary>
-        [Obsolete("错误的命名，请使用 Required，在 2.0.0 删除")]
-        Requierd = 404
+        Nested
     }
 }

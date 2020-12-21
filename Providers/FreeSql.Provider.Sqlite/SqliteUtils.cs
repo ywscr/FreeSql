@@ -44,23 +44,27 @@ namespace FreeSql.Sqlite
         public override DbParameter[] GetDbParamtersByObject(string sql, object obj) =>
             Utils.GetDbParamtersByObject<DbParameter>(sql, obj, "@", (name, type, value) =>
             {
-                var dbtype = (DbType)_orm.CodeFirst.GetDbInfo(type)?.type;
-                switch (dbtype)
+                var typeint = _orm.CodeFirst.GetDbInfo(type)?.type;
+                var dbtype = typeint != null ? (DbType?)typeint : null;
+                if (dbtype != null)
                 {
-                    case DbType.Guid:
-                        if (value == null) value = null;
-                        else value = ((Guid)value).ToString();
-                        dbtype = DbType.String;
-                        break;
-                    case DbType.Time:
-                        if (value == null) value = null;
-                        else value = ((TimeSpan)value).Ticks / 10000;
-                        dbtype = DbType.Int64;
-                        break;
+                    switch (dbtype.Value)
+                    {
+                        case DbType.Guid:
+                            if (value == null) value = null;
+                            else value = ((Guid)value).ToString();
+                            dbtype = DbType.String;
+                            break;
+                        case DbType.Time:
+                            if (value == null) value = null;
+                            else value = ((TimeSpan)value).Ticks / 10000;
+                            dbtype = DbType.Int64;
+                            break;
+                    }
                 }
                 var ret = new SQLiteParameter();
                 ret.ParameterName = $"@{name}";
-                ret.DbType = dbtype;
+                if (dbtype != null) ret.DbType = dbtype.Value;
                 ret.Value = value;
                 return ret;
             });
@@ -98,7 +102,7 @@ namespace FreeSql.Sqlite
         public override string QuoteWriteParamter(Type type, string paramterName) => paramterName;
         public override string QuoteReadColumn(Type type, Type mapType, string columnName) => columnName;
 
-        public override string GetNoneParamaterSqlValue(List<DbParameter> specialParams, string specialParamFlag, Type type, object value)
+        public override string GetNoneParamaterSqlValue(List<DbParameter> specialParams, string specialParamFlag, ColumnInfo col, Type type, object value)
         {
             if (value == null) return "NULL";
             if (type.IsNumberType()) return string.Format(CultureInfo.InvariantCulture, "{0}", value);

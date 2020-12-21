@@ -36,12 +36,13 @@ namespace FreeSql.Internal.CommonProvider
         public List<Action<object>> _includeToList = new List<Action<object>>();
 #if net40
 #else
-        public List<Func<object, Task>> _includeToListAsync = new List<Func<object, Task>>();
+        public List<Func<object, CancellationToken, Task>> _includeToListAsync = new List<Func<object, CancellationToken, Task>>();
 #endif
         public Dictionary<string, MemberExpression[]> _includeInfo = new Dictionary<string, MemberExpression[]>();
         public bool _distinct;
         public Expression _selectExpression;
         public List<GlobalFilter.Item> _whereGlobalFilter;
+        public Func<bool> _cancel;
 
         int _disposeCounter;
         ~Select0Provider()
@@ -60,7 +61,8 @@ namespace FreeSql.Internal.CommonProvider
 #endif
             _includeInfo.Clear();
             _selectExpression = null;
-            _whereGlobalFilter.Clear();
+            _whereGlobalFilter?.Clear();
+            _cancel = null;
         }
 
         public static void CopyData(Select0Provider from, Select0Provider to, ReadOnlyCollection<ParameterExpression> lambParms)
@@ -114,20 +116,21 @@ namespace FreeSql.Internal.CommonProvider
             to._includeToList = new List<Action<object>>(from._includeToList.ToArray());
 #if net40
 #else
-            to._includeToListAsync = new List<Func<object, Task>>(from._includeToListAsync.ToArray());
+            to._includeToListAsync = new List<Func<object, CancellationToken, Task>>(from._includeToListAsync.ToArray());
 #endif
             to._distinct = from._distinct;
             to._selectExpression = from._selectExpression;
             to._whereGlobalFilter = new List<GlobalFilter.Item>(from._whereGlobalFilter.ToArray());
+            to._cancel = from._cancel;
         }
 
-        public Expression ConvertStringPropertyToExpression(string property)
+        public Expression ConvertStringPropertyToExpression(string property, bool fromFirstTable = false)
         {
             if (string.IsNullOrEmpty(property)) return null;
             var field = property.Split('.').Select(a => a.Trim()).ToArray();
             Expression exp = null;
 
-            if (field.Length == 1)
+            if (field.Length == 1 && fromFirstTable == false)
             {
                 foreach (var tb in _tables)
                 {
@@ -165,7 +168,7 @@ namespace FreeSql.Internal.CommonProvider
         }
     }
 
-    public abstract partial class Select0Provider<TSelect, T1> : Select0Provider, ISelect0<TSelect, T1> where TSelect : class where T1 : class
+    public abstract partial class Select0Provider<TSelect, T1> : Select0Provider, ISelect0<TSelect, T1> where TSelect : class
     {
         public Select0Provider(IFreeSql orm, CommonUtils commonUtils, CommonExpression commonExpression, object dywhere)
         {
@@ -180,6 +183,12 @@ namespace FreeSql.Internal.CommonProvider
         public TSelect TrackToList(Action<object> track)
         {
             _trackToList = track;
+            return this as TSelect;
+        }
+
+        public TSelect Cancel(Func<bool> cancel)
+        {
+            _cancel = cancel;
             return this as TSelect;
         }
 
@@ -371,7 +380,7 @@ namespace FreeSql.Internal.CommonProvider
         public IDelete<T1> ToDelete()
         {
             if (_tables[0].Table.Primarys.Any() == false) throw new Exception($"ToDelete 功能要求实体类 {_tables[0].Table.CsName} 必须有主键");
-            var del = _orm.Delete<T1>() as DeleteProvider<T1>;
+            var del = (_orm as BaseDbProvider).CreateDeleteProvider<T1>(null) as DeleteProvider<T1>;
             if (_tables[0].Table.Type != typeof(T1)) del.AsType(_tables[0].Table.Type);
             if (_params.Any()) del._params = new List<DbParameter>(_params.ToArray());
             if (_whereGlobalFilter.Any()) del._whereGlobalFilter = new List<GlobalFilter.Item>(_whereGlobalFilter.ToArray());
@@ -399,7 +408,7 @@ namespace FreeSql.Internal.CommonProvider
         public IUpdate<T1> ToUpdate()
         {
             if (_tables[0].Table.Primarys.Any() == false) throw new Exception($"ToUpdate 功能要求实体类 {_tables[0].Table.CsName} 必须有主键");
-            var upd = _orm.Update<T1>() as UpdateProvider<T1>;
+            var upd = (_orm as BaseDbProvider).CreateUpdateProvider<T1>(null) as UpdateProvider<T1>;
             if (_tables[0].Table.Type != typeof(T1)) upd.AsType(_tables[0].Table.Type);
             if (_params.Any()) upd._params = new List<DbParameter>(_params.ToArray());
             if (_whereGlobalFilter.Any()) upd._whereGlobalFilter = new List<GlobalFilter.Item>(_whereGlobalFilter.ToArray());
@@ -687,7 +696,11 @@ namespace FreeSql.Internal.CommonProvider
         public long Count()
         {
             var tmpOrderBy = _orderby;
+            var tmpSkip = _skip;
+            var tmpLimit = _limit;
             _orderby = null; //解决 select count(1) from t order by id 这样的 SQL 错误
+            _skip = 0;
+            _limit = 0;
             try
             {
                 return this.ToList<int>($"count(1){_commonUtils.FieldAsAlias("as1")}").Sum(); //这里的 Sum 为了分表查询
@@ -695,6 +708,8 @@ namespace FreeSql.Internal.CommonProvider
             finally
             {
                 _orderby = tmpOrderBy;
+                _skip = tmpSkip;
+                _limit = tmpLimit;
             }
         }
         public TSelect Count(out long count)
@@ -716,35 +731,41 @@ namespace FreeSql.Internal.CommonProvider
 
 #if net40
 #else
-        async public Task<bool> AnyAsync()
+        async public Task<bool> AnyAsync(CancellationToken cancellationToken = default)
         {
             this.Limit(1);
-            return (await this.ToListAsync<int>($"1{_commonUtils.FieldAsAlias("as1")}")).Sum() > 0; //这里的 Sum 为了分表查询
+            return (await this.ToListAsync<int>($"1{_commonUtils.FieldAsAlias("as1")}", cancellationToken)).Sum() > 0; //这里的 Sum 为了分表查询
         }
-        async public Task<long> CountAsync()
+        async public Task<long> CountAsync(CancellationToken cancellationToken = default)
         {
             var tmpOrderBy = _orderby;
+            var tmpSkip = _skip;
+            var tmpLimit = _limit;
             _orderby = null;
+            _skip = 0;
+            _limit = 0;
             try
             {
-                return (await this.ToListAsync<int>($"count(1){_commonUtils.FieldAsAlias("as1")}")).Sum(); //这里的 Sum 为了分表查询
+                return (await this.ToListAsync<int>($"count(1){_commonUtils.FieldAsAlias("as1")}", cancellationToken)).Sum(); //这里的 Sum 为了分表查询
             }
             finally
             {
                 _orderby = tmpOrderBy;
+                _skip = tmpSkip;
+                _limit = tmpLimit;
             }
         }
-        public virtual Task<List<T1>> ToListAsync(bool includeNestedMembers = false)
+        public virtual Task<List<T1>> ToListAsync(bool includeNestedMembers = false, CancellationToken cancellationToken = default)
         {
-            if (_selectExpression != null) return this.InternalToListAsync<T1>(_selectExpression);
-            return this.ToListPrivateAsync(includeNestedMembers == false ? this.GetAllFieldExpressionTreeLevel2() : this.GetAllFieldExpressionTreeLevelAll(), null);
+            if (_selectExpression != null) return this.InternalToListAsync<T1>(_selectExpression, cancellationToken);
+            return this.ToListPrivateAsync(includeNestedMembers == false ? this.GetAllFieldExpressionTreeLevel2() : this.GetAllFieldExpressionTreeLevelAll(), null, cancellationToken);
         }
-        async public Task<T1> ToOneAsync()
+        async public Task<T1> ToOneAsync(CancellationToken cancellationToken = default)
         {
             this.Limit(1);
-            return (await this.ToListAsync()).FirstOrDefault();
+            return (await this.ToListAsync(false, cancellationToken)).FirstOrDefault();
         }
-        public Task<T1> FirstAsync() => this.ToOneAsync();
+        public Task<T1> FirstAsync(CancellationToken cancellationToken = default) => this.ToOneAsync(cancellationToken);
 #endif
     }
 }

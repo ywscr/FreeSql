@@ -57,7 +57,7 @@ namespace FreeSql.Internal.CommonProvider
                 MasterPool.Return(conn);
                 var after = new Aop.TraceAfterEventArgs(before, "", ex);
                 _util?._orm?.Aop.TraceAfterHandler?.Invoke(this, after);
-                throw ex;
+                throw;
             }
             if (_trans.ContainsKey(tid)) CommitTransaction();
             _trans.TryAdd(tid, tran);
@@ -112,16 +112,17 @@ namespace FreeSql.Internal.CommonProvider
 
         void TransactionInternal(IsolationLevel? isolationLevel, Action handler)
         {
+            var requireTran = TransactionCurrentThread == null;
             try
             {
-                BeginTransaction(isolationLevel);
+                if (requireTran) BeginTransaction(isolationLevel);
                 handler();
-                CommitTransaction();
+                if (requireTran) CommitTransaction();
             }
             catch (Exception ex)
             {
-                RollbackTransaction(ex);
-                throw ex;
+                if (requireTran) RollbackTransaction(ex);
+                throw;
             }
         }
 
@@ -129,6 +130,7 @@ namespace FreeSql.Internal.CommonProvider
         int _disposeCounter;
         public void Dispose()
         {
+            if (ResolveTransaction != null) return;
             if (Interlocked.Increment(ref _disposeCounter) != 1) return;
             try
             {

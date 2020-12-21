@@ -4,6 +4,11 @@
         <name>FreeSql.DbContext</name>
     </assembly>
     <members>
+        <member name="P:FreeSql.DbContext.Orm">
+            <summary>
+            该对象 Select/Delete/Insert/Update/InsertOrUpdate 与 DbContext 事务保持一致，可省略传递 WithTransaction
+            </summary>
+        </member>
         <member name="M:FreeSql.DbContext.Add``1(``0)">
             <summary>
             添加
@@ -343,30 +348,17 @@
             工作单元
             </summary>
         </member>
+        <member name="P:FreeSql.IUnitOfWork.Orm">
+            <summary>
+            该对象 Select/Delete/Insert/Update/InsertOrUpdate 与工作单元事务保持一致，可省略传递 WithTransaction
+            </summary>
+        </member>
         <member name="M:FreeSql.IUnitOfWork.GetOrBeginTransaction(System.Boolean)">
             <summary>
             开启事务，或者返回已开启的事务
             </summary>
             <param name="isCreate">若未开启事务，则开启</param>
             <returns></returns>
-        </member>
-        <member name="P:FreeSql.IUnitOfWork.Enable">
-            <summary>
-            是否启用工作单元
-            </summary>
-        </member>
-        <member name="M:FreeSql.IUnitOfWork.Close">
-            <summary>
-            禁用工作单元
-            <exception cref="T:System.Exception"></exception>
-            <para></para>
-            若已开启事务（已有Insert/Update/Delete操作），调用此方法将发生异常，建议在执行逻辑前调用
-            </summary>
-        </member>
-        <member name="M:FreeSql.IUnitOfWork.Open">
-            <summary>
-            开启工作单元
-            </summary>
         </member>
         <member name="P:FreeSql.IUnitOfWork.EntityChangeReport">
             <summary>
@@ -444,11 +436,6 @@
             以嵌套事务方式执行。
             </summary>
         </member>
-        <member name="F:FreeSql.Propagation.Requierd">
-            <summary>
-            错误的命名，请使用 Required，在 2.0.0 删除
-            </summary>
-        </member>
         <member name="M:FreeSqlDbContextExtensions.Entity``1(FreeSql.ICodeFirst,System.Action{FreeSql.Extensions.EfCoreFluentApi.EfCoreTableFluent{``0}})">
             <summary>
             EFCore 95% 相似的 FluentApi 扩展方法
@@ -523,6 +510,15 @@
             创建基于仓储功能的工作单元，务必使用 using 包含使用
             </summary>
             <param name="that"></param>
+            <returns></returns>
+        </member>
+        <member name="M:Microsoft.Extensions.DependencyInjection.FreeSqlRepositoryDependencyInjection.AddFreeRepository(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{FreeSql.FluentDataFilter},System.Reflection.Assembly[])">
+            <summary>
+            批量注入 Repository，可以参考代码自行调整
+            </summary>
+            <param name="services"></param>
+            <param name="globalDataFilter"></param>
+            <param name="assemblies"></param>
             <returns></returns>
         </member>
     </members>
