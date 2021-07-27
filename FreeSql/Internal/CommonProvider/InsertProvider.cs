@@ -179,7 +179,7 @@ namespace FreeSql.Internal.CommonProvider
                 }
                 if (val == null && col.Attribute.MapType == typeof(string) && col.Attribute.IsNullable == false)
                     col.SetValue(data, val = "");
-                if (val == null && col.Attribute.MapType == typeof(byte[]) && col.Attribute.IsVersion)
+                if (col.Attribute.MapType == typeof(byte[]) && (val == null || (val is byte[] bytes && bytes.Length == 0)) && col.Attribute.IsVersion)
                     col.SetValue(data, val = Utils.GuidToBytes(Guid.NewGuid()));
             }
         }
@@ -572,13 +572,12 @@ namespace FreeSql.Internal.CommonProvider
                     {
                         object val = col.GetDbValue(d);
                         if (val == null && col.Attribute.IsNullable == false) val = col.CsType == typeof(string) ? "" : Utils.GetDataReaderValue(col.CsType.NullableTypeOrThis(), null);//#384
-                        if (_noneParameter)
-                            sb.Append(_commonUtils.GetNoneParamaterSqlValue(specialParams, _noneParameterFlag, col, col.Attribute.MapType, val));
-                        else
-                        {
-                            sb.Append(_commonUtils.QuoteWriteParamter(col.Attribute.MapType, _commonUtils.QuoteParamterName($"{col.CsName}_{didx}")));
+
+                        var colsql = _noneParameter ? _commonUtils.GetNoneParamaterSqlValue(specialParams, _noneParameterFlag, col, col.Attribute.MapType, val) :
+                            _commonUtils.QuoteWriteParamterAdapter(col.Attribute.MapType, _commonUtils.QuoteParamterName($"{col.CsName}_{didx}"));
+                        sb.Append(_commonUtils.RewriteColumn(col, colsql));
+                        if (_noneParameter == false)
                             _params[didx * colidx + colidx2] = _commonUtils.AppendParamter(null, $"{col.CsName}_{didx}", col, col.Attribute.MapType, val);
-                        }
                     }
                     ++colidx2;
                 }

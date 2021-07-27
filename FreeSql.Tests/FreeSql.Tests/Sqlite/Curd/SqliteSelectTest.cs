@@ -172,6 +172,10 @@ namespace FreeSql.Tests.Sqlite
                 this.name = name;
             }
         }
+        class TestDto3
+        {
+            public string title { get; set; } //这是join表的属性
+        }
         class TestDtoLeftJoin
         {
             [Column(IsPrimary = true)]
@@ -208,6 +212,8 @@ namespace FreeSql.Tests.Sqlite
             var testDto213 = select.Limit(10).ToList(a => new TestDto2 { });
             var testDto214 = select.Limit(10).ToList(a => new TestDto2() { });
             var testDto215 = select.Limit(10).ToList<TestDto2>();
+            var testDto216 = select.Limit(10).ToList<TestDto3>();
+
 
             var testDto2211 = select.LeftJoin(a => a.Type.Guid == a.TypeGuid).Limit(10).ToList(a => new TestDto2(a.Id, a.Title));
             var testDto2222 = select.LeftJoin(a => a.Type.Guid == a.TypeGuid).Limit(10).ToList(a => new TestDto2());
@@ -800,6 +806,17 @@ namespace FreeSql.Tests.Sqlite
         {
             var sql = select.OrderBy(a => new Random().NextDouble()).ToList();
         }
+        [Fact]
+        public void OrderByRandom()
+        {
+            var t1 = select.OrderByRandom().Limit(10).ToSql("1");
+            Assert.Equal(@"SELECT 1 
+FROM ""tb_topic22"" a 
+ORDER BY random() 
+limit 0,10", t1);
+            var t2 = select.OrderByRandom().Limit(10).ToList();
+        }
+
         [Fact]
         public void Skip_Offset()
         {
@@ -1557,6 +1574,19 @@ WHERE (((cast(a.""Id"" as character)) in (SELECT b.""Title""
             Assert.Equal(1, songs1[1].Tags.Count);
             Assert.Equal(3, songs1[2].Tags.Count);
 
+            var songs1chunks = new List<Song>();
+            g.sqlite.Select<Song>()
+                .IncludeMany(a => a.Tags)
+                .Where(a => a.Id == song1.Id || a.Id == song2.Id || a.Id == song3.Id)
+                .ToChunk(2, ft =>
+                {
+                    songs1chunks.AddRange(ft.Object);
+                });
+            Assert.Equal(3, songs1.Count);
+            Assert.Equal(2, songs1[0].Tags.Count);
+            Assert.Equal(1, songs1[1].Tags.Count);
+            Assert.Equal(3, songs1[2].Tags.Count);
+
             var songs2 = g.sqlite.Select<Song>()
                 .IncludeMany(a => a.Tags,
                     then => then.IncludeMany(t => t.Songs))
@@ -1573,6 +1603,15 @@ WHERE (((cast(a.""Id"" as character)) in (SELECT b.""Title""
                 .Where(a => a.Tag.Id == tag1.Id || a.Tag.Id == tag2.Id)
                 .ToList(true);
 
+            var tags3chunks = new List<Song_tag>();
+            g.sqlite.Select<Song_tag>()
+                .Include(a => a.Tag.Parent)
+                .IncludeMany(a => a.Tag.Songs)
+                .Where(a => a.Tag.Id == tag1.Id || a.Tag.Id == tag2.Id)
+                .ToChunk(2, ft =>
+                {
+                    tags3chunks.AddRange(ft.Object);
+                });
 
             var songs11 = g.sqlite.Select<Song>()
                 .IncludeMany(a => a.Tags.Take(1))
@@ -2391,6 +2430,47 @@ FROM ""D_District"" a
 LEFT JOIN ""D_District"" a__Parent ON a__Parent.""Code"" = a.""ParentCode"" 
 WHERE ((not((a.""Code"") LIKE '%val1%') AND not((a.""Name"") LIKE 'val2%') OR not((a.""Name"") LIKE '%val3') OR a.""ParentCode"" <> 'val4' OR a__Parent.""Code"" = 'val11' AND (a__Parent.""Name"") LIKE '%val22%' OR a__Parent.""Name"" = 'val33' OR a__Parent.""ParentCode"" = 'val44')) 
 ORDER BY a__Parent.""Name""", sql);
+
+            sql = fsql.Select<ts_dyfilter_enum01>().WhereDynamicFilter(JsonConvert.DeserializeObject<DynamicFilterInfo>(@"
+{
+  ""Logic"" : ""Or"",
+  ""Filters"" :
+  [
+    {
+      ""Field"" : ""name"",
+      ""Operator"" : ""NotEndsWith"",
+      ""Value"" : ""testname01""
+    },
+    {
+      ""Field"" : ""no"",
+      ""Operator"" : ""NotEndsWith"",
+      ""Value"" : ""testname01""
+    },
+    {
+      ""Field"" : ""id"",
+      ""Operator"" : ""NotEndsWith"",
+      ""Value"" : ""testname01""
+    },
+    {
+      ""Field"" : ""status"",
+      ""Operator"" : ""eq"",
+      ""Value"" : ""finished""
+    },
+  ]
+}
+")).ToSql();
+            Assert.Equal(@"SELECT a.""id"", a.""name"", a.""no"", a.""status"" 
+FROM ""ts_dyfilter_enum01"" a 
+WHERE ((not((a.""name"") LIKE '%testname01') OR not((a.""no"") LIKE '%testname01') OR not((a.""id"") LIKE '%testname01') OR a.""status"" = 2))", sql);
         }
+
+        class ts_dyfilter_enum01
+        {
+            public Guid id { get; set; }
+            public string name { get; set; }
+            public int no { get; set; }
+            public ts_dyfilter_enum01_status status { get; set; }
+        }
+        public enum ts_dyfilter_enum01_status { staring, stoped, finished }
     }
 }

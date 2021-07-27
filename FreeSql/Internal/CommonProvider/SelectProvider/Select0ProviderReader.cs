@@ -1,4 +1,4 @@
-﻿using FreeSql.Internal.Model;
+using FreeSql.Internal.Model;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
@@ -373,7 +373,7 @@ namespace FreeSql.Internal.CommonProvider
         }
         public GetAllFieldExpressionTreeInfo GetAllFieldExpressionTreeLevelAll()
         {
-            return _dicGetAllFieldExpressionTree.GetOrAdd($"*{string.Join("+", _tables.Select(a => $"{_orm.Ado.DataType}-{a.Table.DbName}-{a.Alias}-{a.Type}"))}", s =>
+            return _dicGetAllFieldExpressionTree.GetOrAdd($"*{string.Join("+", _tables.Select(a => $"{_orm.Ado.DataType}-{a.Table.DbName}-{a.Table.CsName}-{a.Alias}-{a.Type}"))}", s =>
             {
                 var type = _tables.First().Table.TypeLazy ?? _tables.First().Table.Type;
                 var ormExp = Expression.Parameter(typeof(IFreeSql), "orm");
@@ -415,7 +415,7 @@ namespace FreeSql.Internal.CommonProvider
                             if (tbiindex > 0 && colidx == 0) field.Append("\r\n");
                         }
                         var quoteName = _commonUtils.QuoteSqlName(col.Attribute.Name);
-                        field.Append(_commonUtils.QuoteReadColumn(col.CsType, col.Attribute.MapType, $"{tbi.Alias}.{quoteName}"));
+                        field.Append(_commonUtils.RereadColumn(col, $"{tbi.Alias}.{quoteName}"));
                         ++index;
                         if (dicfield.ContainsKey(quoteName)) field.Append(_commonUtils.FieldAsAlias($"as{index}"));
                         else dicfield.Add(quoteName, true);
@@ -516,12 +516,21 @@ namespace FreeSql.Internal.CommonProvider
         static EventHandler<Aop.AuditDataReaderEventArgs> _OldAuditDataReaderHandler;
         public GetAllFieldExpressionTreeInfo GetAllFieldExpressionTreeLevel2()
         {
+            if (_selectExpression != null) //ToSql
+            {
+                var af = this.GetExpressionField(_selectExpression);
+                return new GetAllFieldExpressionTreeInfo
+                {
+                    Field = af.field,
+                    Read = (dr, idx) => throw new Exception("GetAllFieldExpressionTreeInfo.Read Is Null")
+                };
+            }
             if (_OldAuditDataReaderHandler != _orm.Aop.AuditDataReaderHandler)
             {
                 _OldAuditDataReaderHandler = _orm.Aop.AuditDataReaderHandler; //清除单表 ExppressionTree
-                _dicGetAllFieldExpressionTree.TryRemove($"{_orm.Ado.DataType}-{_tables[0].Table.DbName}-{_tables[0].Alias}-{_tables[0].Type}", out var oldet);
+                _dicGetAllFieldExpressionTree.TryRemove($"{_orm.Ado.DataType}-{_tables[0].Table.DbName}-{_tables[0].Table.CsName}-{_tables[0].Alias}-{_tables[0].Type}", out var oldet);
             }
-            return _dicGetAllFieldExpressionTree.GetOrAdd(string.Join("+", _tables.Select(a => $"{_orm.Ado.DataType}-{a.Table.DbName}-{a.Alias}-{a.Type}")), s =>
+            return _dicGetAllFieldExpressionTree.GetOrAdd(string.Join("+", _tables.Select(a => $"{_orm.Ado.DataType}-{a.Table.DbName}-{a.Table.CsName}-{a.Alias}-{a.Type}")), s =>
             {
                 var tb1 = _tables.First().Table;
                 var type = tb1.TypeLazy ?? tb1.Type;
@@ -555,7 +564,7 @@ namespace FreeSql.Internal.CommonProvider
                     { //普通字段
                         if (index > 0) field.Append(", ");
                         var quoteName = _commonUtils.QuoteSqlName(col.Attribute.Name);
-                        field.Append(_commonUtils.QuoteReadColumn(col.CsType, col.Attribute.MapType, $"{tb.Alias}.{quoteName}"));
+                        field.Append(_commonUtils.RereadColumn(col, $"{tb.Alias}.{quoteName}"));
                         ++index;
                         if (dicfield.ContainsKey(quoteName)) field.Append(_commonUtils.FieldAsAlias($"as{index}"));
                         else dicfield.Add(quoteName, true);
@@ -578,7 +587,7 @@ namespace FreeSql.Internal.CommonProvider
                         {
                             if (index > 0) field.Append(", ");
                             var quoteName = _commonUtils.QuoteSqlName(col2.Attribute.Name);
-                            field.Append(_commonUtils.QuoteReadColumn(col2.CsType, col2.Attribute.MapType, $"{tb2.Alias}.{quoteName}"));
+                            field.Append(_commonUtils.RereadColumn(col2, $"{tb2.Alias}.{quoteName}"));
                             ++index;
                             ++otherindex;
                             if (dicfield.ContainsKey(quoteName)) field.Append(_commonUtils.FieldAsAlias($"as{index}"));

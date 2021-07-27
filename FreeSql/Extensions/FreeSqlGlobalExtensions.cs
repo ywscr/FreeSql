@@ -436,6 +436,7 @@ public static partial class FreeSqlGlobalExtensions
                         mysqlVersion = select._connection.ServerVersion;
                         if (isclosed) select._connection.Close();
                     }
+                    _dicMySqlVersion.TryAdd(mysqlConnectionString, mysqlVersion);
                 }
                 if (int.TryParse((mysqlVersion ?? "").Split('.')[0], out var mysqlVersionFirst) && mysqlVersionFirst < 8)
                 {
@@ -536,10 +537,22 @@ JOIN {select._commonUtils.QuoteSqlName(tb.DbName)} a ON cte_tbc.cte_id = a.{sele
             .ToSql($"wct1.cte_level + 1 as cte_level, {sql2ctePath}{sql2Field}").Trim();
 
         var newSelect = select._orm.Select<T1>()
+            .WithConnection(select._connection)
+            .WithTransaction(select._transaction)
+            .TrackToList(select._trackToList)
             .AsType(tb.Type)
             .AsTable((type, old) => type == tb.Type ? cteName : old)
             .WhereIf(level > 0, $"a.cte_level < {level + 1}")
             .OrderBy(up, "a.cte_level desc") as Select1Provider<T1>;
+
+        newSelect._params = new List<DbParameter>(select._params.ToArray());
+        newSelect._includeInfo = select._includeInfo;
+        newSelect._includeManySubListOneToManyTempValue1 = select._includeManySubListOneToManyTempValue1;
+        newSelect._includeToList = select._includeToList;
+#if net40
+#else
+        newSelect._includeToListAsync = select._includeToListAsync;
+#endif
 
         var nsselsb = new StringBuilder();
         if (AdoProvider.IsFromSlave(select._select) == false) nsselsb.Append(' '); //读写分离规则，如果强制读主库，则在前面加个空格
@@ -579,4 +592,44 @@ SELECT ");
     }
     #endregion
 
+    #region OrderBy Random 随机排序
+
+    /// <summary>
+    /// 随机排序<para></para>
+    /// 支持：MySql/SqlServer/PostgreSQL/Oracle/Sqlite/Firebird/达梦/金仓/神通<para></para>
+    /// 不支持：MsAcess
+    /// </summary>
+    /// <returns></returns>
+    public static TSelect OrderByRandom<TSelect, T1>(this ISelect0<TSelect, T1> that) where TSelect : class
+    {
+        var s0p = that as Select0Provider;
+        switch (s0p._orm.Ado.DataType)
+        {
+            case DataType.MySql:
+            case DataType.OdbcMySql:
+                return that.OrderBy("rand()");
+            case DataType.SqlServer:
+            case DataType.OdbcSqlServer:
+                return that.OrderBy("newid()");
+            case DataType.PostgreSQL:
+            case DataType.OdbcPostgreSQL:
+            case DataType.KingbaseES:
+            case DataType.OdbcKingbaseES:
+            case DataType.ShenTong:
+                return that.OrderBy("random()");
+            case DataType.Oracle:
+            case DataType.Dameng:
+            case DataType.OdbcOracle:
+            case DataType.OdbcDameng:
+                return that.OrderBy("dbms_random.value");
+            case DataType.Sqlite:
+                return that.OrderBy("random()");
+            //case DataType.MsAccess:
+            //    return that.OrderBy("rnd()");
+            case DataType.Firebird:
+                return that.OrderBy("rand()");
+        }
+        throw new NotSupportedException($"{s0p._orm.Ado.DataType} 不支持 OrderByRandom 随机排序");
+    }
+    #endregion
 }

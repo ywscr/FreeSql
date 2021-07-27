@@ -119,7 +119,7 @@ namespace FreeSql.MySql
         public override string Now => "now()";
         public override string NowUtc => "utc_timestamp()";
 
-        public override string QuoteWriteParamter(Type type, string paramterName)
+        public override string QuoteWriteParamterAdapter(Type type, string paramterName)
         {
             switch (type.FullName)
             {
@@ -132,7 +132,7 @@ namespace FreeSql.MySql
             }
             return paramterName;
         }
-        public override string QuoteReadColumn(Type type, Type mapType, string columnName)
+        protected override string QuoteReadColumnAdapter(Type type, Type mapType, string columnName)
         {
             switch (mapType.FullName)
             {

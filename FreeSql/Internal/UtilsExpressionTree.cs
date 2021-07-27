@@ -187,7 +187,9 @@ namespace FreeSql.Internal
                 }
                 try
                 {
-                    col.DbDefaultValue = common.GetNoneParamaterSqlValue(new List<DbParameter>(), "init", col, colattr.MapType, defaultValue);
+                    var initParms = new List<DbParameter>();
+                    col.DbDefaultValue = common.GetNoneParamaterSqlValue(initParms, "init", col, colattr.MapType, defaultValue);
+                    if (initParms.Any()) col.DbDefaultValue = "NULL";
                 }
                 catch
                 {
@@ -495,6 +497,7 @@ namespace FreeSql.Internal
                 col.DbPrecision = (byte)size;
                 col.DbScale = scale;
             }
+            trytb.IsRereadSql = trytb.Columns.Where(a => string.IsNullOrWhiteSpace(a.Value.Attribute.RereadSql) == false).Any();
             tbc.AddOrUpdate(entity, trytb, (oldkey, oldval) => trytb);
 
             #region 查找导航属性的关系、virtual 属性延时加载，动态产生新的重写类

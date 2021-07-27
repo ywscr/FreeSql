@@ -115,6 +115,21 @@
             decimal/numeric 类型的小数位长度
             </summary>
         </member>
+        <member name="P:FreeSql.DataAnnotations.ColumnAttribute.RewriteSql">
+            <summary>
+            重写功能<para></para>
+            比如：[Column(RewriteSql = &quot;geography::STGeomFromText({0},4236)&quot;)]<para></para>
+            插入：INSERT INTO [table]([geo]) VALUES(geography::STGeomFromText('...',4236))<para></para>
+            提示：更新也生效
+            </summary>
+        </member>
+        <member name="P:FreeSql.DataAnnotations.ColumnAttribute.RereadSql">
+            <summary>
+            重读功能<para></para>
+            比如：[Column(RereadSql = &quot;{0}.STAsText()&quot;)]<para></para>
+            查询：SELECT a.[id], a.[geo].STAsText() FROM [table] a
+            </summary>
+        </member>
         <member name="M:FreeSql.DataAnnotations.ColumnFluent.Name(System.String)">
             <summary>
             数据库列名
@@ -229,6 +244,25 @@
             </summary>
             <param name="precision">总长度</param>
             <param name="scale">小数位长度</param>
+            <returns></returns>
+        </member>
+        <member name="M:FreeSql.DataAnnotations.ColumnFluent.RewriteSql(System.String)">
+            <summary>
+            重写功能<para></para>
+            比如：[Column(RewriteSql = &quot;geography::STGeomFromText({0},4236)&quot;)]<para></para>
+            插入：INSERT INTO [table]([geo]) VALUES(geography::STGeomFromText('...',4236))<para></para>
+            提示：更新也生效
+            </summary>
+            <param name="value"></param>
+            <returns></returns>
+        </member>
+        <member name="M:FreeSql.DataAnnotations.ColumnFluent.RereadSql(System.String)">
+            <summary>
+            重读功能<para></para>
+            比如：[Column(RereadSql = &quot;{0}.STAsText()&quot;)]<para></para>
+            查询：SELECT a.[id], a.[geo].STAsText() FROM [table] a
+            </summary>
+            <param name="value"></param>
             <returns></returns>
         </member>
         <member name="T:FreeSql.DataAnnotations.ExpressionCallAttribute">
@@ -614,6 +648,12 @@
         <member name="F:FreeSql.DataType.Firebird">
             <summary>
             Firebird 是一个跨平台的关系数据库，能作为多用户环境下的数据库服务器运行，也提供嵌入式数据库的实现
+            </summary>
+        </member>
+        <member name="F:FreeSql.DataType.Custom">
+            <summary>
+            自定义适配器，访问任何数据库<para></para>
+            注意：该类型不提供 DbFirst/CodeFirst 功能
             </summary>
         </member>
         <member name="M:FreeSql.AdoNetExtensions.GetIFreeSql(System.Data.IDbConnection)">
@@ -1154,6 +1194,14 @@
             <param name="defaultValue"></param>
             <returns></returns>
         </member>
+        <member name="M:FreeSql.SqlExt.DistinctCount``1(``0)">
+            <summary>
+            count(distinct name)
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="column"></param>
+            <returns></returns>
+        </member>
         <member name="M:FreeSql.SqlExt.GreaterThan``1(``0,``0)">
             <summary>
             大于 &gt;
@@ -1182,6 +1230,16 @@
             <summary>
             case when .. then .. end
             </summary>
+            <returns></returns>
+        </member>
+        <member name="M:FreeSql.SqlExt.CaseDict``2(``0,System.Collections.Generic.Dictionary{``0,``1})">
+            <summary>
+            case when .. then .. end
+            </summary>
+            <typeparam name="TInput"></typeparam>
+            <typeparam name="TOutput"></typeparam>
+            <param name="input"></param>
+            <param name="dict"></param>
             <returns></returns>
         </member>
         <member name="M:FreeSql.SqlExt.GroupConcat(System.Object)">
@@ -2088,6 +2146,13 @@
             <param name="pageSize">每页多少</param>
             <returns></returns>
         </member>
+        <member name="M:FreeSql.ISelect0`2.Page(FreeSql.Internal.Model.BasePagingInfo)">
+            <summary>
+            分页
+            </summary>
+            <param name="pagingInfo">分页信息</param>
+            <returns></returns>
+        </member>
         <member name="M:FreeSql.ISelect0`2.Distinct">
             <summary>
             查询数据前，去重
@@ -2559,6 +2624,13 @@
             <param name="pageSize">每页多少</param>
             <returns></returns>
         </member>
+        <member name="M:FreeSql.ISelectGrouping`2.Page(FreeSql.Internal.Model.BasePagingInfo)">
+            <summary>
+            分页
+            </summary>
+            <param name="pagingInfo">分页信息</param>
+            <returns></returns>
+        </member>
         <member name="M:FreeSql.ISelectGrouping`2.Count">
             <summary>
             查询的记录数量
@@ -2678,12 +2750,13 @@
             <param name="source">实体</param>
             <returns></returns>
         </member>
-        <member name="M:FreeSql.IUpdate`1.SetSource(System.Collections.Generic.IEnumerable{`0})">
+        <member name="M:FreeSql.IUpdate`1.SetSource(System.Collections.Generic.IEnumerable{`0},System.Linq.Expressions.Expression{System.Func{`0,System.Object}})">
             <summary>
             更新数据，设置更新的实体集合<para></para>
             注意：实体必须定义主键，并且最终会自动附加条件 where id in (source.Id)
             </summary>
             <param name="source">实体集合</param>
+            <param name="tempPrimarys">根据临时主键更新，a => a.Name | a => new{a.Name,a.Time} | a => new[]{"name","time"}</param>
             <returns></returns>
         </member>
         <member name="M:FreeSql.IUpdate`1.SetSourceIgnore(`0,System.Func{System.Object,System.Boolean})">
@@ -3410,6 +3483,11 @@
             参数化命令
             </summary>
         </member>
+        <member name="P:FreeSql.Aop.CurdBeforeEventArgs.States">
+            <summary>
+            状态数据，可与 CurdAfter 共享
+            </summary>
+        </member>
         <member name="P:FreeSql.Aop.CurdAfterEventArgs.Exception">
             <summary>
             发生的错误
@@ -3438,6 +3516,11 @@
         <member name="P:FreeSql.Aop.SyncStructureBeforeEventArgs.EntityTypes">
             <summary>
             实体类型
+            </summary>
+        </member>
+        <member name="P:FreeSql.Aop.SyncStructureBeforeEventArgs.States">
+            <summary>
+            状态数据，可与 SyncStructureAfter 共享
             </summary>
         </member>
         <member name="P:FreeSql.Aop.SyncStructureAfterEventArgs.Sql">
@@ -3500,6 +3583,11 @@
             标识符，可将 CommandBefore 与 CommandAfter 进行匹配
             </summary>
         </member>
+        <member name="P:FreeSql.Aop.CommandBeforeEventArgs.States">
+            <summary>
+            状态数据，可与 CommandAfter 共享
+            </summary>
+        </member>
         <member name="P:FreeSql.Aop.CommandAfterEventArgs.Exception">
             <summary>
             发生的错误
@@ -3523,6 +3611,11 @@
         <member name="P:FreeSql.Aop.TraceBeforeEventArgs.Identifier">
             <summary>
             标识符，可将 TraceBeforeEventArgs 与 TraceAfterEventArgs 进行匹配
+            </summary>
+        </member>
+        <member name="P:FreeSql.Aop.TraceBeforeEventArgs.States">
+            <summary>
+            状态数据，可与 TraceAfter 共享
             </summary>
         </member>
         <member name="P:FreeSql.Aop.TraceAfterEventArgs.Remark">
@@ -3907,6 +4000,26 @@
             <param name="commandTimeout"></param>
             <returns></returns>
         </member>
+        <member name="T:FreeSql.Internal.Model.BasePagingInfo">
+            <summary>
+            分页信息
+            </summary>
+        </member>
+        <member name="P:FreeSql.Internal.Model.BasePagingInfo.PageNumber">
+            <summary>
+            第几页，从1开始
+            </summary>
+        </member>
+        <member name="P:FreeSql.Internal.Model.BasePagingInfo.PageSize">
+            <summary>
+            每页多少
+            </summary>
+        </member>
+        <member name="P:FreeSql.Internal.Model.BasePagingInfo.Count">
+            <summary>
+            查询的记录数量
+            </summary>
+        </member>
         <member name="P:FreeSql.Internal.Model.BatchProgressStatus`1.Data">
             <summary>
             当前操作的数据
@@ -4282,7 +4395,7 @@
             </summary>
             <param name="policy">策略</param>
         </member>
-        <member name="M:FreeSql.Internal.ObjectPool.ObjectPool`1.getFree(System.Boolean)">
+        <member name="M:FreeSql.Internal.ObjectPool.ObjectPool`1.GetFree(System.Boolean)">
             <summary>
             获取可用资源，或创建资源
             </summary>
@@ -4459,6 +4572,14 @@
             <param name="pathSelector">路径内容选择</param>
             <param name="pathSeparator">连接路径内容</param>
             <param name="level">递归层级</param>
+            <returns></returns>
+        </member>
+        <member name="M:FreeSqlGlobalExtensions.OrderByRandom``2(FreeSql.ISelect0{``0,``1})">
+            <summary>
+            随机排序<para></para>
+            支持：MySql/SqlServer/PostgreSQL/Oracle/Sqlite/Firebird/达梦/金仓/神通<para></para>
+            不支持：MsAcess
+            </summary>
             <returns></returns>
         </member>
         <member name="M:System.Linq.Expressions.LambadaExpressionExtensions.And``1(System.Linq.Expressions.Expression{System.Func{``0,System.Boolean}},System.Linq.Expressions.Expression{System.Func{``0,System.Boolean}})">

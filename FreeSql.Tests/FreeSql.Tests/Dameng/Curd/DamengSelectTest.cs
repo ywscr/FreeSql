@@ -748,6 +748,10 @@ namespace FreeSql.Tests.Dameng
 
             var fkfjfj = select.GroupBy(a => a.Title)
                 .ToList(a => a.Sum(a.Value.TypeGuid));
+            var fkfjfj2 = select.GroupBy(a => a.Title)
+                .Page(2, 10)
+                .OrderBy(a => a.Key)
+                .ToList(a => a.Sum(a.Value.TypeGuid));
 
             var aggsql1 = select
                 .GroupBy(a => a.Title)
@@ -832,6 +836,16 @@ namespace FreeSql.Tests.Dameng
         {
             var sql = select.Offset(10).OrderBy(a => new Random().NextDouble()).ToList();
         }
+        [Fact]
+        public void OrderByRandom()
+        {
+            var t1 = select.OrderByRandom().Limit(10).ToSql("1");
+            Assert.Equal(@"SELECT  t.* FROM (SELECT 1 
+FROM ""TB_TOPIC22"" a 
+ORDER BY dbms_random.value) t WHERE ROWNUM < 11", t1);
+            var t2 = select.OrderByRandom().Limit(10).ToList();
+        }
+
         [Fact]
         public void Skip_Offset()
         {
@@ -1673,6 +1687,9 @@ WHERE (((to_char(a.""ID"")) in (SELECT b.""TITLE""
             Assert.Equal(2, g.dameng.Select<ToUpd1Pk>().Where(a => a.name.StartsWith("name")).ToUpdate().Set(a => a.name, "nick?").ExecuteAffrows());
             Assert.Equal(5, g.dameng.Select<ToUpd1Pk>().Count());
             Assert.Equal(5, g.dameng.Select<ToUpd1Pk>().Where(a => a.name.StartsWith("nick")).Count());
+
+            var toupdateSql1 = g.dameng.Select<ToUpd1Pk>().Where(a => a.name.StartsWith("name")).ToUpdate().Set(a => a.name, "nick?").ToSql();
+            var toupdateSql2 = g.dameng.Select<ToUpd1Pk>().AsTable((_, old) => "toupd1pk_test").Where(a => a.name.StartsWith("name")).ToUpdate().Set(a => a.name, "nick?").ToSql();
 
             g.dameng.Select<ToUpd2Pk>().ToDelete().ExecuteAffrows();
             Assert.Equal(0, g.dameng.Select<ToUpd2Pk>().Count());
